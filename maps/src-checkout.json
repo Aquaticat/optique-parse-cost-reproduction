@@ -1,0 +1,10 @@
+{
+  "imports": {
+    "@optique/core/constructs": "file:///path/to/optique/packages/core/src/constructs.ts",
+    "@optique/core/message": "file:///path/to/optique/packages/core/src/message.ts",
+    "@optique/core/modifiers": "file:///path/to/optique/packages/core/src/modifiers.ts",
+    "@optique/core/parser": "file:///path/to/optique/packages/core/src/parser.ts",
+    "@optique/core/primitives": "file:///path/to/optique/packages/core/src/primitives.ts",
+    "@optique/core/valueparser": "file:///path/to/optique/packages/core/src/valueparser.ts"
+  }
+}

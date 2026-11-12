@@ -1,0 +1,98 @@
+# Each job installs a pinned @optique/core, checks the tarball's checksum, runs
+# one script, and then asserts the behaviour one would expect.  A job is red on
+# its asserting step exactly when the behaviour described in README.md
+# reproduces, and green when it does not.
+
+name: Reproduce
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  discarded-diagnostics:
+    name: Diagnostics for discarded mismatches (${{ matrix.version }})
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - version: 1.3.6
+            sha256: 6a24982a7178d3ad66b0338598154e0e8ef16dee6651bde7a8ac145ffce6dd2b
+          - version: 1.4.0-dev.2971
+            sha256: fbfa4083ef675c201717573a38f5eb9eaa6adeb02ddfb21a40bc6b3bcaa0cc74
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 26.13.1
+          package-manager-cache: false
+      - name: Fetch @optique/core ${{ matrix.version }} and verify its checksum
+        run: |
+          npm pack "@optique/core@${{ matrix.version }}"
+          echo "${{ matrix.sha256 }}  optique-core-${{ matrix.version }}.tgz" | sha256sum --check
+          npm install --no-save --no-package-lock "./optique-core-${{ matrix.version }}.tgz"
+      - name: A parse that succeeds builds no mismatch diagnostic
+        run: node mismatch-count.ts --assert-zero
+
+  token-scaling:
+    name: Parse time against token count (${{ matrix.version }})
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - version: 1.3.6
+            sha256: 6a24982a7178d3ad66b0338598154e0e8ef16dee6651bde7a8ac145ffce6dd2b
+          - version: 1.4.0-dev.2971
+            sha256: fbfa4083ef675c201717573a38f5eb9eaa6adeb02ddfb21a40bc6b3bcaa0cc74
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 26.13.1
+          package-manager-cache: false
+      - name: Fetch @optique/core ${{ matrix.version }} and verify its checksum
+        run: |
+          npm pack "@optique/core@${{ matrix.version }}"
+          echo "${{ matrix.sha256 }}  optique-core-${{ matrix.version }}.tgz" | sha256sum --check
+          npm install --no-save --no-package-lock "./optique-core-${{ matrix.version }}.tgz"
+      - name: Time parses of 500 to 8000 positional tokens
+        run: node token-scaling.ts | tee token-scaling.json
+      - name: Parse time grows in proportion to the token count
+        run: node expect.ts exponent-below 1.5 token-scaling.json
+
+  separator:
+    name: A thousand paths after "--", 1.4.0-dev.2971 against 1.3.6
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 26.13.1
+          package-manager-cache: false
+      - name: Fetch both versions and verify their checksums
+        run: |
+          npm pack "@optique/core@1.3.6" "@optique/core@1.4.0-dev.2971"
+          sha256sum --check <<'SUMS'
+          6a24982a7178d3ad66b0338598154e0e8ef16dee6651bde7a8ac145ffce6dd2b  optique-core-1.3.6.tgz
+          fbfa4083ef675c201717573a38f5eb9eaa6adeb02ddfb21a40bc6b3bcaa0cc74  optique-core-1.4.0-dev.2971.tgz
+          SUMS
+          mkdir baseline candidate
+          cp commit-paths.ts package.json baseline/
+          cp commit-paths.ts package.json candidate/
+          npm install --prefix baseline --no-save --no-package-lock "$PWD/optique-core-1.3.6.tgz"
+          npm install --prefix candidate --no-save --no-package-lock "$PWD/optique-core-1.4.0-dev.2971.tgz"
+      - name: Time the parse on each version, alternating
+        run: |
+          for round in 1 2 3 4 5; do
+            (cd baseline && node commit-paths.ts --separator) >> baseline.jsonl
+            (cd candidate && node commit-paths.ts --separator) >> candidate.jsonl
+          done
+          cat baseline.jsonl candidate.jsonl
+      - name: The pre-release takes no longer than 1.3.6 does
+        run: node expect.ts ratio-below 1.3 baseline.jsonl candidate.jsonl

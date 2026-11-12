@@ -1,0 +1,5 @@
+{
+  "imports": {
+    "@optique/core/": "npm:/@optique/core@1.4.0-dev.2971/"
+  }
+}

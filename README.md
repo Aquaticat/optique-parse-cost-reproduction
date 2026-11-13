@@ -24,15 +24,17 @@ through a parser with the option set of `git commit`, which is the parser this
 project used.  With `--separator` it puts `--` before the paths.  That second
 form is where the 1.4 pre-releases take longer than 1.3.6: every option probe
 there builds a short-option scope, and no suggestion work is left to hide it.
+Upstream tracks that as [issue 1120].
 
 *token-scaling.ts* parses 500 to 8,000 positional tokens through a parser with
 one option and fits the exponent of time against token count, where 1 is linear
-and 2 is quadratic.  It comes out near 2 on every version tried, 1.1.1 through
-the 1.4 pre-releases, because the input trace copies its whole map for each
-token it records.
+and 2 is quadratic.  It came out between 1.56 and 1.92 in every run we have, on
+1.3.6 and on `1.4.0-dev.2971`, because the input trace copies its whole map for
+each token it records.
 
 [issue 988]: https://github.com/dahlia/optique/issues/988
 [pull request 997]: https://github.com/dahlia/optique/pull/997
+[issue 1120]: https://github.com/dahlia/optique/issues/1120
 
 
 Running them
@@ -50,13 +52,17 @@ node token-scaling.ts
 With Deno, point an import map at an npm version and install nothing:
 
 ~~~~ bash
-deno run --import-map maps/npm-1.3.6.json commit-paths.ts --separator
+deno run --no-config --import-map maps/npm-1.3.6.json commit-paths.ts --separator
 ~~~~
+
+`--no-config` is needed because of the *package.json* beside the scripts:
+without it Deno 2 looks for the package in *node\_modules* and stops with
+"Could not find a matching package".
 
 To measure a checkout of Optique, for example a branch, copy
 *maps/src-checkout.json*, replace `/path/to/optique` in it with the checkout's
-absolute path, and run the scripts with Deno and that map.  No build step is
-needed.
+absolute path, and run the scripts with Deno, `--no-config` and that map.  No
+build step is needed.
 
 Every script takes `--help`.
 
@@ -77,12 +83,27 @@ reproduces:
     long as 1.3.6, over five alternating rounds.  Red.
 
 The first assertion is a count and cannot flake.  The other two are ratios of
-timings taken in the same job; on our own machine they were 1.75 to 1.97 for the
-exponent and 1.5 to 2.1 for the ratio.
+timings taken in the same job.  In the workflow's first two runs the exponent
+was 1.70 on 1.3.6 and 1.56 on `1.4.0-dev.2971`, and the ratio 1.86.
+
+
+Measured on three runtimes
+--------------------------
+
+On 2026-11-13 every script was run as this file says, in a two-CPU container
+with no network, on Node 26.13.1, Deno 2.9.8 and Bun 1.4.4:
+
+ -  *mismatch-count.ts* printed 30,000 on 1.3.6 and 0 on `1.4.0-dev.2971` on
+    all three.
+ -  *token-scaling.ts* fitted 1.85 and 1.75 on Node, 1.92 and 1.78 on Deno, and
+    1.63 and 1.57 on Bun (1.3.6 first).
+ -  *commit-paths.ts --separator*, five alternating rounds: `1.4.0-dev.2971`
+    took 1.90 times as long as 1.3.6 on Node (1.80 to 2.11), 1.85 on Deno
+    (1.77 to 2.00) and 2.61 on Bun (2.51 to 2.75).
 
 
 About these scripts
 -------------------
 
 The scripts and this text were written with AI assistance (Claude Code and
-DeepSeek through Pi) and run on Node, Deno and Bun before being published.
+DeepSeek through Pi).

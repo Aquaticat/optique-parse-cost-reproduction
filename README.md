@@ -101,6 +101,17 @@ with no network, on Node 26.13.1, Deno 2.9.8 and Bun 1.4.4:
     took 1.90 times as long as 1.3.6 on Node (1.80 to 2.11), 1.85 on Deno
     (1.77 to 2.00) and 2.61 on Bun (2.51 to 2.75).
 
+Every figure in this file is a count, a fitted exponent within one process, or
+a ratio between versions run in turn in the same job.  No absolute time is
+given, because the machines were shared and an absolute time from them would
+say little.
+
+Deno is here because a source checkout runs on it without a build.  Its
+maintainers have said they [will maintain it until October 2027] and take no
+new feature work, so the Node and Bun figures are the ones to weigh.
+
+[will maintain it until October 2027]: https://github.com/denoland/deno/issues/37030#:~:text=will%20continue%20maintain%20Deno%20until%20October%202027
+
 
 About these scripts
 -------------------
